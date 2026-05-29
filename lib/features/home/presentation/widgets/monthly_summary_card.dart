@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../domain/providers/expense_providers.dart';
+import '../../../expense_history/domain/notifiers/expense_filter_notifier.dart';
+import '../../domain/notifiers/monthly_expense_notifier.dart';
 
 class MonthlySummaryCard extends ConsumerWidget {
   const MonthlySummaryCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final total = ref.watch(monthlyTotalProvider);
-    final month = ref.watch(selectedMonthProvider);
+    final filterState = ref.watch(expenseFilterNotifierProvider);
     final theme = Theme.of(context);
-    final monthStr = DateFormat('MMMM yyyy').format(month);
+    final monthStr = DateFormat('MMMM yyyy').format(filterState.selectedMonth);
+    final total = ref.read(monthlyExpenseNotifierProvider.notifier).total;
 
     return Container(
       margin: const EdgeInsets.all(16),

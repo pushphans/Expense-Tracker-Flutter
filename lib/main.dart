@@ -1,37 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/expenses/domain/providers/expense_providers.dart';
-import 'features/expenses/presentation/screens/history_screen.dart';
-import 'features/expenses/presentation/screens/home_screen.dart';
-import 'features/expenses/presentation/screens/stats_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
+import 'features/stats/presentation/screens/stats_screen.dart';
+import 'features/expense_history/presentation/screens/history_screen.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  final db = await openDatabase(
-    p.join(await getDatabasesPath(), 'expenses.db'),
-    version: 1,
-    onCreate: (db, _) => db.execute('''
-      CREATE TABLE expenses (
-        id       INTEGER PRIMARY KEY AUTOINCREMENT,
-        amount   REAL    NOT NULL,
-        category TEXT    NOT NULL,
-        note     TEXT,
-        date     TEXT    NOT NULL
-      )
-    '''),
-  );
-
-  runApp(
-    ProviderScope(
-      overrides: [databaseProvider.overrideWithValue(db)],
-      child: const ExpenseTrackerApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
 
 class ExpenseTrackerApp extends StatelessWidget {
@@ -95,4 +72,3 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
-

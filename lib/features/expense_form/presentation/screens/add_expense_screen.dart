@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../data/models/expense_model.dart';
-import '../../domain/providers/expense_providers.dart';
+import '../../../../shared/models/expense_model.dart';
+import '../../domain/notifiers/expense_form_notifier.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final Expense? expense;
@@ -23,7 +23,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   late String _selectedCategory;
   late DateTime _selectedDate;
-  bool _saving = false;
 
   bool get isEditing => widget.expense != null;
 
@@ -139,18 +138,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               onTap: _pickDate,
             ),
             const SizedBox(height: 32),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(isEditing ? 'Update' : 'Save'),
+            
+            // Save button with Consumer for loading state
+            Consumer(
+              builder: (context, ref, child) {
+                final formState = ref.watch(expenseFormNotifierProvider);
+                
+                return FilledButton(
+                  onPressed: formState.isSaving ? null : _save,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                  child: formState.isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(isEditing ? 'Update' : 'Save'),
+                );
+              },
             ),
           ],
         ),
@@ -175,9 +182,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
-    setState(() => _saving = true);
-    final repo = ref.read(expenseRepositoryProvider);
-
     final amount = double.parse(_amountController.text);
     final note = _noteController.text.isEmpty ? null : _noteController.text;
 
@@ -195,16 +199,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             date: _selectedDate,
           );
 
-    if (isEditing) {
-      await repo.updateExpense(expense);
-    } else {
-      await repo.addExpense(expense);
-    }
+    final success = isEditing
+        ? await ref.read(expenseFormNotifierProvider.notifier).updateExpense(expense)
+        : await ref.read(expenseFormNotifierProvider.notifier).addExpense(expense);
 
-    _invalidateAll();
-
-    if (mounted) {
+    if (success && mounted) {
       Navigator.pop(context);
+    } else if (mounted) {
+      final error = ref.read(expenseFormNotifierProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${error ?? "Unknown error"}')),
+      );
     }
   }
 
@@ -229,20 +234,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
 
     if (confirm == true) {
-      await ref
-          .read(expenseRepositoryProvider)
+      final success = await ref
+          .read(expenseFormNotifierProvider.notifier)
           .deleteExpense(widget.expense!.id!);
-      _invalidateAll();
-      if (mounted) {
+      
+      if (success && mounted) {
         Navigator.pop(context);
       }
     }
-  }
-
-  void _invalidateAll() {
-    ref.invalidate(monthlyExpensesProvider);
-    ref.invalidate(allExpensesProvider);
-    ref.invalidate(filteredExpensesProvider);
-    ref.invalidate(monthlyTotalsChartProvider);
   }
 }
